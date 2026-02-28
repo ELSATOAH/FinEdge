@@ -15,15 +15,17 @@ from flask import Flask, render_template, jsonify, request
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import config
+from logging.handlers import RotatingFileHandler
 from core import database, fetcher, indicators, predictor, signals, sentiment, alerts
 
 # ── Logging ─────────────────────────────────────────────
+os.makedirs(config.DATA_DIR, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join(config.DATA_DIR, "finedge.log"), maxBytes=5*1024*1024),
+        RotatingFileHandler(os.path.join(config.DATA_DIR, "finedge.log"), maxBytes=5*1024*1024, backupCount=3),
     ]
 )
 log = logging.getLogger("finedge")

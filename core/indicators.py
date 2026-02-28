@@ -1,7 +1,7 @@
 """
 FinEdge - Technical Indicators Engine
 Calculates RSI, MACD, Bollinger Bands, SMA/EMA crossovers, and more.
-All computations use pandas/numpy — lightweight for Raspberry Pi.
+All computations use pandas/numpy for fast performance.
 """
 import numpy as np
 import pandas as pd

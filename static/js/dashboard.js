@@ -491,7 +491,7 @@ async function refreshAll() {
     const btn = document.getElementById('refreshBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Analyzing...';
-    showToast('Running full analysis... This may take a minute on Pi', 'info');
+    showToast('Running full analysis... This may take a minute on your PC', 'info');
 
     try {
         const res = await fetch(API.refresh, { method: 'POST' });

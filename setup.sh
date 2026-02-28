@@ -15,7 +15,7 @@ cd "$SCRIPT_DIR"
 # Check Python
 echo "[1/5] Checking Python..."
 if ! command -v python3 &> /dev/null; then
-    echo "ERROR: Python 3 not found. Install with: sudo apt install python3 python3-pip python3-venv"
+    echo "ERROR: Python 3 not found. Please install Python 3.9 or newer from https://www.python.org/downloads/"
     exit 1
 fi
 PYVER=$(python3 --version)
@@ -57,7 +57,7 @@ echo "    source venv/bin/activate"
 echo "    python3 app.py"
 echo ""
 echo "  Then open in your browser:"
-echo "    http://$(hostname -I | awk '{print $1}'):5000"
+echo "    http://localhost:5000"
 echo ""
 echo "  Optional: Set up Telegram alerts:"
 echo "    export FINEDGE_TG_TOKEN='your-bot-token'"

@@ -17,13 +17,46 @@ DEBUG = False
 # ── Default Watchlist ───────────────────────────────────
 # Add tickers you want to track (stocks & crypto)
 DEFAULT_WATCHLIST = [
-    "AAPL",   # Apple
-    "MSFT",   # Microsoft
-    "GOOGL",  # Alphabet
-    "TSLA",   # Tesla
-    "NVDA",   # Nvidia
-    "BTC-USD",  # Bitcoin
-    "ETH-USD",  # Ethereum
+  "ADS.DE",
+  "AIR.DE",
+  "ALV.DE",
+  "BAS.DE",
+  "BAYN.DE",
+  "BEI.DE",
+  "BMW.DE",
+  "BNR.DE",
+  "CBK.DE",
+  "CON.DE",
+  "DTG.DE",
+  "DBK.DE",
+  "DB1.DE",
+  "DHL.DE",
+  "DTE.DE",
+  "EOAN.DE",
+  "FRE.DE",
+  "FME.DE",
+  "G1A.DE",
+  "HNR1.DE",
+  "HEI.DE",
+  "HEN3.DE",
+  "IFX.DE",
+  "MBG.DE",
+  "MRK.DE",
+  "MTX.DE",
+  "MUV2.DE",
+  "PAH3.DE",
+  "QIA.DE",
+  "RHM.DE",
+  "RWE.DE",
+  "SAP.DE",
+  "G24.DE",
+  "SIE.DE",
+  "ENR.DE",
+  "SHL.DE",
+  "SY1.DE",
+  "VOW3.DE",
+  "VNA.DE",
+  "ZAL.DE",
 ]
 
 # ── Data Settings ───────────────────────────────────────
@@ -40,7 +73,7 @@ RETRAIN_HOURS = 6                # Retrain models every N hours
 # ── Sentiment Settings ──────────────────────────────────
 SENTIMENT_ENABLED = True
 NEWS_SOURCES = [
-    "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US",
+  "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=DE&lang=de-DE",
 ]
 MAX_NEWS_ITEMS = 20
 

@@ -1,6 +1,6 @@
 """
 FinEdge - ML Prediction Engine
-Lightweight scikit-learn models optimized for Raspberry Pi.
+Scikit-learn models for price prediction.
 Uses GradientBoosting or RandomForest to predict next-day price direction.
 """
 import os
