@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinEdge — AI Edge Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+<!-- ═══ Loading Overlay ═══ -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="big-spinner"></div>
+    <div class="loading-text">Loading FinEdge...</div>
+</div>
+
+<!-- ═══ Toast Notifications ═══ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══ Header ═══ -->
+<header class="header">
+    <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div>
+            <div class="logo-text">FinEdge</div>
+            <div class="logo-sub">AI Edge Predictor</div>
+        </div>
+    </div>
+    <div class="header-actions">
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            <span>Live on Pi</span>
+        </div>
+        <button class="btn" onclick="showAddModal()">+ Add Ticker</button>
+        <button class="btn btn-primary" id="refreshBtn" onclick="refreshAll()">⚡ Analyze</button>
+    </div>
+</header>
+
+<!-- ═══ Ticker Tape ═══ -->
+<div class="ticker-tape">
+    <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<!-- ═══ Main Content ═══ -->
+<main class="main">
+
+    <!-- Summary Cards -->
+    <div class="summary-row" id="summaryRow">
+        <div class="summary-card">
+            <div class="summary-label">Loading...</div>
+            <div class="summary-value"><span class="spinner"></span></div>
+        </div>
+    </div>
+
+    <!-- Detail Panel (hidden by default) -->
+    <div class="detail-panel" id="detailPanel">
+        <div class="detail-header">
+            <div class="detail-ticker" id="detailTicker"></div>
+            <div style="display:flex;gap:0.5rem;">
+                <button class="btn" onclick="selectedTicker && removeTicker(selectedTicker)">🗑 Remove</button>
+                <button class="btn" onclick="selectedTicker && generateSignal(selectedTicker)">⚡ Re-analyze</button>
+                <button class="detail-close" onclick="closeDetail()">✕</button>
+            </div>
+        </div>
+
+        <!-- Price Chart -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <span class="section-title">📈 Price History (90d)</span>
+            </div>
+            <canvas id="priceCanvas"></canvas>
+        </div>
+
+        <!-- Technical Indicators -->
+        <div style="margin-bottom:1rem">
+            <div class="section-title" style="margin-bottom:0.75rem">🔬 Technical Indicators</div>
+            <div class="detail-grid" id="detailGrid">
+                <div class="detail-stat">
+                    <div class="detail-stat-label">Loading...</div>
+                    <div class="detail-stat-value"><span class="spinner"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- News & Sentiment -->
+        <div>
+            <div class="section-title" style="margin-bottom:0.75rem">📰 News Sentiment</div>
+            <div class="news-feed" id="newsFeed">
+                <div style="color:var(--text-muted);font-size:0.82rem;padding:0.5rem;">Loading news...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signal Cards -->
+    <div class="section-header">
+        <span class="section-title">📊 Edge Signals</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);">Click a card for details</span>
+    </div>
+    <div class="signal-grid" id="signalGrid">
+        <div class="signal-card">
+            <div class="card-top">
+                <div class="card-ticker">Loading...</div>
+            </div>
+            <div style="text-align:center;padding:2rem;">
+                <span class="spinner"></span>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ═══ Add Ticker Modal ═══ -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <div class="modal-title">Add Ticker to Watchlist</div>
+        <input type="text" id="tickerInput" placeholder="e.g. AAPL, TSLA, BTC-USD" maxlength="10">
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:1rem;">
+            Enter a stock ticker (AAPL, MSFT) or crypto pair (BTC-USD, ETH-USD)
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeAddModal()">Cancel</button>
+            <button class="btn btn-primary" id="addBtn" onclick="addTicker()">⚡ Add</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Footer ═══ -->
+<footer style="text-align:center;padding:2rem;font-size:0.7rem;color:var(--text-muted);">
+    FinEdge v1.0 — Running on Raspberry Pi 4B · AI-Powered Edge Predictions<br>
+    <span style="font-size:0.65rem;">Not financial advice. For educational purposes only.</span>
+</footer>
+
+<script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>
