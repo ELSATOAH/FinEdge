@@ -1,7 +1,6 @@
 """
 FinEdge - AI-Powered Stock/Crypto Edge Predictor
 Main Flask Application
-Runs on Raspberry Pi 4B (2GB RAM)
 """
 import sys
 import os
@@ -260,7 +259,6 @@ def initialize():
 if __name__ == "__main__":
     log.info("="*50)
     log.info("  FinEdge - AI Stock/Crypto Edge Predictor")
-    log.info("  Running on Raspberry Pi")
     log.info("="*50)
 
     initialize()

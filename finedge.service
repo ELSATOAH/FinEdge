@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/Projects/AI/ChatGPT/finedge
-ExecStart=/home/pi/Projects/AI/ChatGPT/finedge/venv/bin/python3 app.py
+User=%i
+WorkingDirectory=/opt/finedge
+ExecStart=/opt/finedge/venv/bin/python3 app.py
 Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1

@@ -1,8 +1,8 @@
-# FinEdge — AI-Powered Stock/Crypto Edge Predictor 🚀⚡
+# FinEdge — AI-Powered Stock/Crypto Edge Predictor
 
-> Runs 24/7 on your Raspberry Pi 4B. Uses machine learning, technical analysis, and news sentiment to generate trading signals with a composite **Edge Score**.
+> Uses machine learning, technical analysis, and news sentiment to generate trading signals with a composite **Edge Score**.
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue) ![Platform](https://img.shields.io/badge/Platform-Raspberry%20Pi-red) ![License](https://img.shields.io/badge/License-MIT-green)
+![Python](https://img.shields.io/badge/Python-3.9+-blue) ![Platform](https://img.shields.io/badge/Platform-Windows-blue) ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Features
 
@@ -14,7 +14,6 @@
 - **Auto-Analysis** — Scheduled data fetching and model retraining
 - **Telegram Alerts** — Get notified when strong signals are detected
 - **REST API** — Full API for integration with other tools
-- **Pi-Optimized** — Lightweight models, SQLite storage, ~200MB RAM usage
 
 ## Quick Start
 
@@ -26,7 +25,7 @@ source venv/bin/activate
 python3 app.py
 ```
 
-Open `http://<your-pi-ip>:5000` in any browser.
+Open `http://localhost:5000` in your browser.
 
 ## Architecture
 

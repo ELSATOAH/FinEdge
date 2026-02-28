@@ -13,6 +13,7 @@ eggs/
 venv/
 .venv/
 env/
+FinEdgeVenv/
 
 # IDE
 .vscode/

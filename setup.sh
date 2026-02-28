@@ -1,12 +1,11 @@
 #!/bin/bash
-# FinEdge Setup Script for Raspberry Pi 4B
+# FinEdge Setup Script
 # AI-Powered Stock/Crypto Edge Predictor
 
 set -e
 
 echo "================================================"
 echo "  FinEdge - AI Edge Predictor Setup"
-echo "  Optimized for Raspberry Pi 4B (2GB RAM)"
 echo "================================================"
 echo ""
 
@@ -33,7 +32,7 @@ fi
 source venv/bin/activate
 
 # Install dependencies
-echo "[3/5] Installing dependencies (this may take a few minutes on Pi)..."
+echo "[3/5] Installing dependencies..."
 pip install --upgrade pip setuptools wheel -q
 pip install -r requirements.txt -q
 

@@ -1,6 +1,6 @@
 """
 FinEdge Configuration
-AI-Powered Stock/Crypto Edge Predictor for Raspberry Pi
+AI-Powered Stock/Crypto Edge Predictor
 """
 import os
 
