@@ -78,7 +78,7 @@ NEWS_SOURCES = [
 MAX_NEWS_ITEMS = 20
 
 # ── Alert Settings ──────────────────────────────────────
-TELEGRAM_ENABLED = False
+TELEGRAM_ENABLED = True
 TELEGRAM_BOT_TOKEN = os.environ.get("FINEDGE_TG_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("FINEDGE_TG_CHAT", "")
 
@@ -88,5 +88,5 @@ WEIGHT_TECHNICAL = 0.35   # Technical analysis weight
 WEIGHT_SENTIMENT = 0.20   # Sentiment weight
 
 # ── Display ─────────────────────────────────────────────
-CURRENCY_SYMBOL = "$"
+CURRENCY_SYMBOL = "€"
 DECIMAL_PLACES = 2

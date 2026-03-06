@@ -16,7 +16,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import config
 from logging.handlers import RotatingFileHandler
-from core import database, fetcher, indicators, predictor, signals, sentiment, alerts
+from core import database, indicators, predictor, signals, alerts
+from services.market_service import get_latest_price, get_history_df, refresh_watchlist, update_history
+from providers.market_yahoo import get_ticker_info  
+from services.sentiment_service import get_sentiment_score
 
 # ── Logging ─────────────────────────────────────────────
 os.makedirs(config.DATA_DIR, exist_ok=True)
@@ -42,7 +45,7 @@ def scheduled_update():
     """Periodic data fetch and signal generation."""
     log.info("Running scheduled update...")
     try:
-        fetcher.fetch_all_watchlist()
+        refresh_watchlist(mode="refresh")  
         results = signals.generate_all_signals()
         alerts.alert_all_signals(results)
         log.info(f"Scheduled update complete: {len(results)} signals generated")
@@ -86,12 +89,12 @@ def api_add_watchlist():
         return jsonify({"error": "Ticker required"}), 400
 
     # Fetch info and add
-    info = fetcher.fetch_ticker_info(ticker)
+    info = get_ticker_info(ticker)
     asset_type = "crypto" if "-USD" in ticker else "stock"
     database.add_to_watchlist(ticker, info.get("name", ticker), asset_type)
 
     # Fetch historical data in background
-    fetcher.fetch_history(ticker)
+    update_history(ticker, period=config.HISTORY_PERIOD, interval="1d")
 
     return jsonify({"status": "added", "ticker": ticker, "info": info})
 
@@ -108,7 +111,7 @@ def api_remove_watchlist(ticker):
 
 @app.route("/api/price/<ticker>")
 def api_get_price(ticker):
-    price = fetcher.get_latest_price(ticker.upper())
+    price = get_latest_price(ticker.upper())
     if price:
         return jsonify(price)
     return jsonify({"error": "No data"}), 404
@@ -123,7 +126,7 @@ def api_get_history(ticker):
 
 @app.route("/api/indicators/<ticker>")
 def api_get_indicators(ticker):
-    df = fetcher.get_history_df(ticker.upper())
+    df = get_history_df(ticker.upper(), days=365)
     if df.empty:
         return jsonify({"error": "No data"}), 404
     df = indicators.compute_all(df)
@@ -180,7 +183,7 @@ def api_signal_history(ticker):
 
 @app.route("/api/sentiment/<ticker>")
 def api_sentiment(ticker):
-    score, details = sentiment.get_sentiment_score(ticker.upper())
+    score, details = get_sentiment_score(ticker.upper())
     return jsonify({"score": score, "details": details})
 
 
@@ -219,7 +222,7 @@ def api_dashboard():
 def api_refresh():
     """Manually trigger a full refresh."""
     log.info("Manual refresh triggered")
-    fetcher.fetch_all_watchlist()
+    refresh_watchlist(mode="full")  
     result = signals.generate_all_signals()
     return jsonify({"status": "ok", "signals": len(result)})
 

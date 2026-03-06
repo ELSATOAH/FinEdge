@@ -131,21 +131,26 @@ def remove_from_watchlist(ticker):
 # ── Price History ───────────────────────────────────────────
 
 def save_prices(ticker, df):
-    """Save a pandas DataFrame of OHLCV data."""
+    """Save a pandas DataFrame of OHLCV data (bulk insert)."""
+    if df.empty:
+        return
+    ticker_upper = ticker.upper()
+    rows = []
+    for idx, row in df.iterrows():
+        date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)
+        rows.append((
+            ticker_upper, date_str,
+            float(row.get("Open", 0)), float(row.get("High", 0)),
+            float(row.get("Low", 0)), float(row.get("Close", 0)),
+            int(row.get("Volume", 0)),
+            float(row.get("Adj Close", row.get("Close", 0)))
+        ))
     with get_db() as db:
-        for idx, row in df.iterrows():
-            date_str = idx.strftime("%Y-%m-%d") if hasattr(idx, "strftime") else str(idx)
-            db.execute("""
-                INSERT OR REPLACE INTO price_history
-                (ticker, date, open, high, low, close, volume, adj_close)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                ticker.upper(), date_str,
-                float(row.get("Open", 0)), float(row.get("High", 0)),
-                float(row.get("Low", 0)), float(row.get("Close", 0)),
-                int(row.get("Volume", 0)),
-                float(row.get("Adj Close", row.get("Close", 0)))
-            ))
+        db.executemany("""
+            INSERT OR REPLACE INTO price_history
+            (ticker, date, open, high, low, close, volume, adj_close)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, rows)
 
 
 def get_prices(ticker, limit=365):

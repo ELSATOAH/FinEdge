@@ -11,7 +11,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.preprocessing import StandardScaler
 
@@ -26,6 +26,8 @@ FEATURE_COLS = [
     "ATR", "Stoch_K", "Stoch_D", "Volume_Ratio",
     "ROC_5", "ROC_10", "ROC_20", "Momentum_10",
     "SMA_Cross_10_20", "SMA_Cross_20_50", "CCI", "Williams_R",
+    "ADX", "MFI",
+    "Return_1d", "Return_5d", "Volatility_10", "Volatility_20",
 ]
 
 
@@ -37,6 +39,10 @@ def _get_scaler_path(ticker):
     return os.path.join(config.MODELS_DIR, f"{ticker.upper()}_scaler.pkl")
 
 
+def _get_meta_path(ticker):
+    return os.path.join(config.MODELS_DIR, f"{ticker.upper()}_meta.pkl")
+
+
 def prepare_features(df):
     """Prepare feature matrix from a DataFrame with indicators computed."""
     if df.empty:
@@ -46,8 +52,15 @@ def prepare_features(df):
     if "RSI" not in df.columns:
         df = indicators.compute_all(df)
 
-    # Target: next-day direction (1 = up, 0 = down)
     df = df.copy()
+
+    # Extra engineered features
+    df["Return_1d"] = df["Close"].pct_change(1)
+    df["Return_5d"] = df["Close"].pct_change(5)
+    df["Volatility_10"] = df["Close"].pct_change().rolling(10).std()
+    df["Volatility_20"] = df["Close"].pct_change().rolling(20).std()
+
+    # Target: next-day direction (1 = up, 0 = down)
     df["Future_Return"] = df["Close"].shift(-1) / df["Close"] - 1
     df["Target"] = (df["Future_Return"] > 0).astype(int)
 
@@ -69,8 +82,8 @@ def train_model(ticker, df=None):
     log.info(f"Training model for {ticker}...")
 
     if df is None:
-        from core import fetcher
-        df = fetcher.get_history_df(ticker)
+        from services.market_service import get_history_df
+        df = get_history_df(ticker)
 
     if df.empty or len(df) < config.MIN_TRAINING_SAMPLES:
         log.warning(f"Not enough data to train {ticker} ({len(df)} samples)")
@@ -86,6 +99,8 @@ def train_model(ticker, df=None):
         log.warning(f"Not enough valid samples for {ticker}: {len(X)}")
         return None
 
+    available_features = list(X.columns)
+
     # Scale features
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
@@ -93,41 +108,61 @@ def train_model(ticker, df=None):
     # Select model type
     if config.MODEL_TYPE == "random_forest":
         model = RandomForestClassifier(
-            n_estimators=100, max_depth=8, min_samples_split=10,
-            min_samples_leaf=5, random_state=42, n_jobs=2
+            n_estimators=200, max_depth=8, min_samples_split=10,
+            min_samples_leaf=5, random_state=42, n_jobs=-1
         )
     else:
         model = GradientBoostingClassifier(
-            n_estimators=100, max_depth=4, learning_rate=0.1,
-            min_samples_split=10, min_samples_leaf=5, random_state=42
+            n_estimators=200, max_depth=5, learning_rate=0.05,
+            subsample=0.8, min_samples_split=10, min_samples_leaf=5,
+            random_state=42
         )
 
-    # Cross-validation
-    cv_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="accuracy")
+    # Time-series aware cross-validation
+    tscv = TimeSeriesSplit(n_splits=5)
+    cv_scores = cross_val_score(model, X_scaled, y, cv=tscv, scoring="accuracy")
     log.info(f"{ticker} CV Accuracy: {cv_scores.mean():.3f} ± {cv_scores.std():.3f}")
 
-    # Train on full data
+    # Hold-out test: last 20% of samples (respecting time order)
+    split_idx = int(len(X) * 0.8)
+    X_train, X_test = X_scaled[:split_idx], X_scaled[split_idx:]
+    y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+
+    model.fit(X_train, y_train)
+    y_pred_test = model.predict(X_test)
+
+    test_acc = accuracy_score(y_test, y_pred_test)
+    test_prec = precision_score(y_test, y_pred_test, zero_division=0)
+    test_recall = recall_score(y_test, y_pred_test, zero_division=0)
+    test_f1 = f1_score(y_test, y_pred_test, zero_division=0)
+
+    # Retrain on full data for production
     model.fit(X_scaled, y)
 
-    # Evaluate on training set (for tracking)
-    y_pred = model.predict(X_scaled)
+    # Feature importances
+    importances = dict(zip(available_features, model.feature_importances_.tolist()))
+
     metrics = {
-        "accuracy": round(accuracy_score(y, y_pred), 4),
-        "precision": round(precision_score(y, y_pred, zero_division=0), 4),
-        "recall": round(recall_score(y, y_pred, zero_division=0), 4),
-        "f1": round(f1_score(y, y_pred, zero_division=0), 4),
+        "accuracy": round(test_acc, 4),
+        "precision": round(test_prec, 4),
+        "recall": round(test_recall, 4),
+        "f1": round(test_f1, 4),
         "cv_accuracy": round(cv_scores.mean(), 4),
         "cv_std": round(cv_scores.std(), 4),
         "samples": len(X),
-        "features": list(X.columns),
+        "test_samples": len(X_test),
+        "features": available_features,
+        "feature_importances": importances,
     }
 
-    # Save model and scaler
+    # Save model, scaler, and metadata
     os.makedirs(config.MODELS_DIR, exist_ok=True)
     with open(_get_model_path(ticker), "wb") as f:
         pickle.dump(model, f)
     with open(_get_scaler_path(ticker), "wb") as f:
         pickle.dump(scaler, f)
+    with open(_get_meta_path(ticker), "wb") as f:
+        pickle.dump({"features": available_features}, f)
 
     # Save metrics to DB
     database.save_model_metrics(
@@ -135,7 +170,7 @@ def train_model(ticker, df=None):
         metrics["recall"], metrics["f1"], metrics["samples"]
     )
 
-    log.info(f"Model saved for {ticker}: {metrics}")
+    log.info(f"Model saved for {ticker}: acc={test_acc:.3f} cv={cv_scores.mean():.3f}")
     return metrics
 
 
@@ -143,6 +178,7 @@ def predict(ticker, df=None):
     """Make a prediction for a ticker. Returns prediction dict."""
     model_path = _get_model_path(ticker)
     scaler_path = _get_scaler_path(ticker)
+    meta_path = _get_meta_path(ticker)
 
     # Load or train model
     if not os.path.exists(model_path):
@@ -156,23 +192,35 @@ def predict(ticker, df=None):
             model = pickle.load(f)
         with open(scaler_path, "rb") as f:
             scaler = pickle.load(f)
+        # Load saved feature list to ensure consistency
+        if os.path.exists(meta_path):
+            with open(meta_path, "rb") as f:
+                meta = pickle.load(f)
+            model_features = meta.get("features", FEATURE_COLS)
+        else:
+            model_features = FEATURE_COLS
     except Exception as e:
         log.error(f"Failed to load model for {ticker}: {e}")
         return {"direction": "NEUTRAL", "confidence": 0.0, "change_pct": 0.0}
 
     # Get latest data
     if df is None:
-        from core import fetcher
-        df = fetcher.get_history_df(ticker)
+        from services.market_service import get_history_df
+        df = get_history_df(ticker)
 
     if df.empty:
         return {"direction": "NEUTRAL", "confidence": 0.0, "change_pct": 0.0}
 
-    # Compute indicators
+    # Compute indicators + engineered features
     df = indicators.compute_all(df)
+    df = df.copy()
+    df["Return_1d"] = df["Close"].pct_change(1)
+    df["Return_5d"] = df["Close"].pct_change(5)
+    df["Volatility_10"] = df["Close"].pct_change().rolling(10).std()
+    df["Volatility_20"] = df["Close"].pct_change().rolling(20).std()
 
-    # Get latest row features
-    available_features = [c for c in FEATURE_COLS if c in df.columns]
+    # Use the exact features the model was trained on
+    available_features = [c for c in model_features if c in df.columns]
     last_row = df[available_features].iloc[-1:]
 
     if last_row.isna().any(axis=1).iloc[0]:
@@ -214,13 +262,10 @@ def get_ml_score(ticker, df=None):
     if pred["direction"] == "NEUTRAL":
         return 0.0, pred
 
-    # Score based on direction and confidence
-    base = pred["confidence"] * 100
-    if pred["direction"] == "DOWN":
-        base = -base
-
-    # Scale to -100 to +100
-    score = max(-100, min(100, base))
+    # Use probability spread: (prob_up - prob_down) * 100
+    prob_spread = pred["prob_up"] - pred["prob_down"]
+    score = prob_spread * 100
+    score = max(-100, min(100, score))
 
     return round(score, 1), pred
 

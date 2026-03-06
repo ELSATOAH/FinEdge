@@ -1,6 +1,6 @@
 """
 FinEdge - Technical Indicators Engine
-Calculates RSI, MACD, Bollinger Bands, SMA/EMA crossovers, and more.
+Calculates RSI, MACD, Bollinger Bands, SMA/EMA crossovers, ADX, MFI, and more.
 All computations use pandas/numpy for fast performance.
 """
 import numpy as np
@@ -89,6 +89,12 @@ def compute_all(df):
     tp_mad = tp.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean(), raw=True)
     df["CCI"] = (tp - tp_sma) / (0.015 * tp_mad)
 
+    # ── ADX (14-period) ─────────────────────────────
+    df["ADX"] = _compute_adx(high, low, close, 14)
+
+    # ── MFI (14-period) ─────────────────────────────
+    df["MFI"] = _compute_mfi(high, low, close, volume, 14)
+
     return df
 
 
@@ -111,15 +117,36 @@ def _compute_atr(high, low, close, period=14):
 
 
 def _compute_obv(close, volume):
-    obv = pd.Series(0.0, index=close.index)
-    for i in range(1, len(close)):
-        if close.iloc[i] > close.iloc[i-1]:
-            obv.iloc[i] = obv.iloc[i-1] + volume.iloc[i]
-        elif close.iloc[i] < close.iloc[i-1]:
-            obv.iloc[i] = obv.iloc[i-1] - volume.iloc[i]
-        else:
-            obv.iloc[i] = obv.iloc[i-1]
+    direction = np.sign(close.diff())
+    obv = (direction * volume).fillna(0).cumsum()
     return obv
+
+
+def _compute_adx(high, low, close, period=14):
+    plus_dm = high.diff()
+    minus_dm = -low.diff()
+    plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0.0)
+    minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0.0)
+
+    atr = _compute_atr(high, low, close, period)
+
+    plus_di = 100 * (plus_dm.ewm(alpha=1/period, min_periods=period, adjust=False).mean() / atr)
+    minus_di = 100 * (minus_dm.ewm(alpha=1/period, min_periods=period, adjust=False).mean() / atr)
+
+    dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
+    adx = dx.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    return adx
+
+
+def _compute_mfi(high, low, close, volume, period=14):
+    tp = (high + low + close) / 3
+    mf = tp * volume
+    pos_mf = mf.where(tp > tp.shift(1), 0.0)
+    neg_mf = mf.where(tp < tp.shift(1), 0.0)
+    pos_sum = pos_mf.rolling(period).sum()
+    neg_sum = neg_mf.rolling(period).sum()
+    mfi = 100 - (100 / (1 + pos_sum / neg_sum.replace(0, np.nan)))
+    return mfi
 
 
 def get_ta_score(df):
@@ -151,16 +178,14 @@ def get_ta_score(df):
         signals["RSI"] = {"value": round(rsi, 1), "signal": "NEUTRAL", "score": 0}
         score_parts.append(0)
 
-    # MACD Signal
+    # MACD Signal — normalise histogram relative to price
     macd_hist = last.get("MACD_Hist", 0)
-    if macd_hist > 0:
-        s = min(25, macd_hist * 100)
-        signals["MACD"] = {"value": round(macd_hist, 4), "signal": "BULLISH", "score": round(s)}
-        score_parts.append(s)
-    else:
-        s = max(-25, macd_hist * 100)
-        signals["MACD"] = {"value": round(macd_hist, 4), "signal": "BEARISH", "score": round(s)}
-        score_parts.append(s)
+    price = last.get("Close", 1)
+    macd_pct = (macd_hist / price) * 1000 if price else 0
+    macd_s = max(-25, min(25, macd_pct * 10))
+    label = "BULLISH" if macd_hist > 0 else "BEARISH"
+    signals["MACD"] = {"value": round(macd_hist, 4), "signal": label, "score": round(macd_s)}
+    score_parts.append(macd_s)
 
     # Bollinger Band Position
     bb_pct = last.get("BB_Pct", 0.5)
@@ -206,6 +231,32 @@ def get_ta_score(df):
     else:
         signals["Stochastic"] = {"value": round(stoch_k, 1), "signal": "NEUTRAL", "score": 0}
         score_parts.append(0)
+
+    # ADX — trend strength
+    adx = last.get("ADX", 20)
+    if not np.isnan(adx):
+        if adx > 40:
+            signals["ADX"] = {"value": round(adx, 1), "signal": "STRONG TREND", "score": 10}
+            score_parts.append(10)
+        elif adx < 20:
+            signals["ADX"] = {"value": round(adx, 1), "signal": "NO TREND", "score": -5}
+            score_parts.append(-5)
+        else:
+            signals["ADX"] = {"value": round(adx, 1), "signal": "MODERATE", "score": 0}
+            score_parts.append(0)
+
+    # MFI — money flow
+    mfi = last.get("MFI", 50)
+    if not np.isnan(mfi):
+        if mfi < 20:
+            signals["MFI"] = {"value": round(mfi, 1), "signal": "OVERSOLD", "score": 15}
+            score_parts.append(15)
+        elif mfi > 80:
+            signals["MFI"] = {"value": round(mfi, 1), "signal": "OVERBOUGHT", "score": -15}
+            score_parts.append(-15)
+        else:
+            signals["MFI"] = {"value": round(mfi, 1), "signal": "NEUTRAL", "score": 0}
+            score_parts.append(0)
 
     # Aggregate score, clamped to [-100, 100]
     raw = sum(score_parts)
